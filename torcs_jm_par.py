@@ -444,43 +444,101 @@ def destringify(s):
 import math
 
 # ================= USER CONFIGURABLE PARAMETERS =================
-TARGET_SPEED = 175  # Target speed in km/h. Increasing this makes the car go faster but may reduce stability.
-STEER_GAIN = 25     # Steering sensitivity. Higher values make the car turn more aggressively.
-CENTERING_GAIN = 0.30  # How strongly the car corrects its position toward the center of the track.
-BRAKE_THRESHOLD = 0.15  # Angle threshold for braking. Lower values brake earlier.
-GEAR_SPEEDS = [0, 20, 40, 80, 100, 180]  # Speed thresholds for gear shifting.
+STEER_GAIN = 35    # Steering sensitivity. Higher values make the car turn more aggressively.
+CENTERING_GAIN = 0.45  # How strongly the car corrects its position toward the center of the track.
+BRAKE_THRESHOLD = 0.20  # Angle threshold for braking. Lower values brake earlier.
 ENABLE_TRACTION_CONTROL = True  # Toggle traction control system.
 
 # ================= HELPER FUNCTIONS =================
 def calculate_steering(S):
-    steer = (S['angle'] * STEER_GAIN / math.pi) - (S['trackPos'] * CENTERING_GAIN)
+    # im szybciej jedzie tym delikatniej skreca
+    speed_dampening = 1.0 + (max(0, S['speedX'] - 100) / 100.0)
+    steer = (S['angle'] * (STEER_GAIN / speed_dampening) / math.pi) - (S['trackPos'] * CENTERING_GAIN)
     return max(-1, min(1, steer))
 
 def apply_brakes(S):
-    if S['track'][9] < 50.0 and S['speedX'] > 70.0:
-        return 0.8
-    elif abs(S['angle']) > BRAKE_THRESHOLD and S['speedX'] > 60.0:
-        return 0.3
+    speed = S['speedX']
+    # wykrywanie ciasnych skretow
+    visibility = max(S['track'][9:10])
+    safe_speed = 60.0 + (visibility * 1.85)
+    
+    if speed > safe_speed:
+        over_speed = speed - safe_speed
+        # lapanie hamulca przy osiagnieciu limitu
+        return max(0.05, min(0.95, over_speed / 34.0))
+        
+    if abs(S['angle']) > BRAKE_THRESHOLD and speed > 130.0:
+        return 0.15
+        
     return 0.0
 
 def calculate_throttle(S, R):
     if S['speedX'] < 15.0:
-        return 0.8
+        return 1.0
+        
     if R['brake'] > 0:
         return 0.0
-    if S['speedX'] < TARGET_SPEED - (abs(R['steer']) * 2.5):
-        accel = min(1.0, R['accel'] + 0.4)
+        
+    widocznosc = max(S['track'][9:10])
+    
+    # predkosc docelowa
+    dynamic_target_speed = min(400.0, 60.0 + (widocznosc * 2.0))
+    
+    if abs(S['angle']) < 0.05 and widocznosc > 100.0:
+        return 1.0
+    
+    if S['speedX'] < dynamic_target_speed - (abs(R['steer']) * 2.5):
+        accel = min(1.0, R['accel'] + 0.8)
     else:
-        accel = max(0.0, R['accel'] - 0.2)
+        accel = max(0.0, R['accel'] - 0.1)
+        
+    return max(0.0, min(1.0, accel))
+
+def calculate_throttle(S, R):
+    if S['speedX'] < 15.0:
+        return 1.0
+        
+    if R['brake'] > 0:
+        return 0.0
+        
+    widocznosc = max(S['track'][7:12])
+
+    dynamic_target_speed = min(400.0, 70.0 + (widocznosc * 1.8))
+    
+    # jesli prosta droga - full gaz
+    if abs(S['angle']) < 0.05 and widocznosc > 100.0:
+        return 1.0
+    
+    if S['speedX'] < dynamic_target_speed - (abs(R['steer']) * 2.5):
+        accel = min(1.0, R['accel'] + 0.8)
+    else:
+        accel = max(0.0, R['accel'] - 0.1)
         
     return max(0.0, min(1.0, accel))
 
 def shift_gears(S):
-    gear = 1
-    for i, speed in enumerate(GEAR_SPEEDS):
-        if S['speedX'] > speed:
-            gear = i + 1
-    return min(gear, 6)
+    current_gear = int(S['gear'])
+    rpm = S['rpm']
+    
+    if current_gear <= 0:
+        return 1
+        
+    # przeciaganie biegow
+    if rpm > 9500:
+        return min(current_gear + 1, 6)
+    
+    # po wyjsciu z zakretu wysokie obroty
+    elif rpm < 4000 and current_gear > 1:
+        return max(current_gear - 1, 1)
+        
+    return current_gear
+
+def traction_control(S, accel):
+    if ENABLE_TRACTION_CONTROL:
+        slip = (S['wheelSpinVel'][2] + S['wheelSpinVel'][3]) - (S['wheelSpinVel'][0] + S['wheelSpinVel'][1])
+        if slip > 2:
+            accel = max(0.0, accel - (slip * 0.02))
+    return max(0.0, accel)
 
 def traction_control(S, accel):
     if ENABLE_TRACTION_CONTROL:
