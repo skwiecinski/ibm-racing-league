@@ -436,53 +436,6 @@ def destringify(s):
         else:
             return [destringify(i) for i in s]
 
-def drive_example(c):
-    '''This is only an example. It will get around the track but the
-    correct thing to do is write your own `drive()` function.'''
-    S,R= c.S.d,c.R.d
-    target_speed=160
-
-    R['steer']= S['angle']*25 / PI
-    R['steer']-= S['trackPos']*.25
-
-    R['accel'] = max(0.0, min(1.0, R['accel']))
-    
-
-    if S['speedX'] < target_speed - (R['steer']*2.5):
-        R['accel']+= .4
-    else:
-        R['accel']-= .2
-    if S['speedX']<10:
-       R['accel']+= 1/(S['speedX']+.1)
-
-    if ((S['wheelSpinVel'][2]+S['wheelSpinVel'][3]) -
-       (S['wheelSpinVel'][0]+S['wheelSpinVel'][1]) > 2):
-       R['accel']-= 0.1
-
-
-
-    R['gear']=1
-    if S['speedX']>60:
-        R['gear']=2
-    if S['speedX']>100:
-        R['gear']=3
-    if S['speedX']>140:
-        R['gear']=4
-    if S['speedX']>190:
-        R['gear']=5
-    if S['speedX']>220:
-        R['gear']=6
-    return
-
-if __name__ == "__main__":
-    C= Client(p=3001)
-    for step in range(C.maxSteps,0,-1):
-        C.get_servers_input()
-        drive_example(C)
-        C.respond_to_server()
-    C.shutdown()
-
-
 
 #############################################
 # MODULAR DRIVE LOGIC WITH USER PARAMETERS  #
