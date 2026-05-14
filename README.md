@@ -62,6 +62,12 @@ In accordance with the competition guidelines, we actively utilized the **IBM Gr
 
 ---
 
+### Hotlap
+
+Youtube playlist of our hotlaps - https://www.youtube.com/playlist?list=PLuDfD_42YwUmNA1c_ylSWtB4cw8wVigCp
+
+---
+
 ## Team LeCoders
 * **Szymon Kwieciński**
 * **Krzysztof Bieszczad**
