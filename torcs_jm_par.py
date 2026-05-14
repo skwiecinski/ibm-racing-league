@@ -444,7 +444,7 @@ def destringify(s):
 import math
 
 # ================= USER CONFIGURABLE PARAMETERS =================
-STEER_GAIN = 35    # Steering sensitivity. Higher values make the car turn more aggressively.
+STEER_GAIN = 40    # Steering sensitivity. Higher values make the car turn more aggressively.
 CENTERING_GAIN = 0.45  # How strongly the car corrects its position toward the center of the track.
 BRAKE_THRESHOLD = 0.20  # Angle threshold for braking. Lower values brake earlier.
 ENABLE_TRACTION_CONTROL = True  # Toggle traction control system.
@@ -460,7 +460,7 @@ def apply_brakes(S):
     speed = S['speedX']
     # wykrywanie ciasnych skretow
     visibility = max(S['track'][9:10])
-    safe_speed = 60.0 + (visibility * 1.85)
+    safe_speed = 40.0 + (visibility * 2.15)
     
     if speed > safe_speed:
         over_speed = speed - safe_speed
@@ -503,11 +503,11 @@ def shift_gears(S):
         return 1
         
     # przeciaganie biegow
-    if rpm > 9500:
+    if rpm > 14000:
         return min(current_gear + 1, 6)
     
     # po wyjsciu z zakretu wysokie obroty
-    elif rpm < 4000 and current_gear > 1:
+    elif rpm < 7500 and current_gear > 1:
         return max(current_gear - 1, 1)
         
     return current_gear
