@@ -48,8 +48,9 @@ Once TORCS is waiting at the starting line, execute our main script in your term
 ## Repository Structure
 
 * `torcs_jm_par.py` - The core file containing the logic for our autonomous driver (steering angle calculations, speed control).
-* `snakeoil3.py` - The UDP client providing the communication interface between our Python script and the TORCS simulator.
-* `lap_video.mp4` - A video recording of our fastest qualifying lap.
+* `snakeoil3_gym.py` - The UDP client providing the communication interface, specifically tailored for integration with the Gym environment.
+* `snakeoil3_jm2.py` - An alternative UDP client providing direct communication between our Python scripts and the TORCS simulator.
+* `gym_torcs.py` - The OpenAI Gym environment wrapper that bridges the Reinforcement Learning agent with the TORCS simulator.
 
 ---
 
