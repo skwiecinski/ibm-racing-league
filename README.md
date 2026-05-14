@@ -43,8 +43,6 @@ Once TORCS is waiting at the starting line, execute our main script in your term
 
 `python torcs_jm_par.py`
 
-The connection will be established via the `snakeoil3.py` client, and the car will automatically start driving using our algorithm.
-
 ---
 
 ## Repository Structure
