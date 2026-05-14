@@ -472,27 +472,6 @@ def apply_brakes(S):
         
     return 0.0
 
-def calculate_throttle(S, R):
-    if S['speedX'] < 15.0:
-        return 1.0
-        
-    if R['brake'] > 0:
-        return 0.0
-        
-    widocznosc = max(S['track'][9:10])
-    
-    # predkosc docelowa
-    dynamic_target_speed = min(400.0, 60.0 + (widocznosc * 2.0))
-    
-    if abs(S['angle']) < 0.05 and widocznosc > 100.0:
-        return 1.0
-    
-    if S['speedX'] < dynamic_target_speed - (abs(R['steer']) * 2.5):
-        accel = min(1.0, R['accel'] + 0.8)
-    else:
-        accel = max(0.0, R['accel'] - 0.1)
-        
-    return max(0.0, min(1.0, accel))
 
 def calculate_throttle(S, R):
     if S['speedX'] < 15.0:
@@ -532,13 +511,6 @@ def shift_gears(S):
         return max(current_gear - 1, 1)
         
     return current_gear
-
-def traction_control(S, accel):
-    if ENABLE_TRACTION_CONTROL:
-        slip = (S['wheelSpinVel'][2] + S['wheelSpinVel'][3]) - (S['wheelSpinVel'][0] + S['wheelSpinVel'][1])
-        if slip > 2:
-            accel = max(0.0, accel - (slip * 0.02))
-    return max(0.0, accel)
 
 def traction_control(S, accel):
     if ENABLE_TRACTION_CONTROL:
