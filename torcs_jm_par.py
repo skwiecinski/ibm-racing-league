@@ -444,34 +444,59 @@ def destringify(s):
 import math
 
 # ================= USER CONFIGURABLE PARAMETERS =================
-STEER_GAIN = 35    # Steering sensitivity. Higher values make the car turn more aggressively.
+STEER_GAIN = 40    # Steering sensitivity. Higher values make the car turn more aggressively.
 CENTERING_GAIN = 0.45  # How strongly the car corrects its position toward the center of the track.
 BRAKE_THRESHOLD = 0.20  # Angle threshold for braking. Lower values brake earlier.
 ENABLE_TRACTION_CONTROL = True  # Toggle traction control system.
 
 # ================= HELPER FUNCTIONS =================
 def calculate_steering(S):
-    # im szybciej jedzie tym delikatniej skreca
     speed_dampening = 1.0 + (max(0, S['speedX'] - 100) / 100.0)
-    steer = (S['angle'] * (STEER_GAIN / speed_dampening) / math.pi) - (S['trackPos'] * CENTERING_GAIN)
+    
+    # P-term (Proportional): Reakcja na sam błąd kąta 
+    p_term = S['angle'] * (STEER_GAIN / speed_dampening) / math.pi
+    
+    centering = S['trackPos'] * CENTERING_GAIN
+    
+    # D-term (Derivative-like): Przeciwdziałanie szybkości, z jaką auto zjeżdża na boki
+    d_term = S['speedY'] * 0.01
+    
+    # Odejmujemy d_term, żeby "stępić" gwałtowne rzuty kierownicą
+    steer = p_term - centering - d_term
+    
     return max(-1, min(1, steer))
 
 def apply_brakes(S):
     speed = S['speedX']
-    # wykrywanie ciasnych skretow
-    visibility = max(S['track'][9:10])
-    safe_speed = 60.0 + (visibility * 1.85)
+    
+    visibility = max(S['track'][7:12])
+    
+    
+    safe_speed = 60.0 + (visibility * 1.9)
     
     if speed > safe_speed:
         over_speed = speed - safe_speed
-        # lapanie hamulca przy osiagnieciu limitu
-        return max(0.05, min(0.95, over_speed / 34.0))
         
-    if abs(S['angle']) > BRAKE_THRESHOLD and speed > 130.0:
-        return 0.15
+        # Proporcjonalna siła hamowania
+        # Dzielnik decyduje, jak agresywnie uderzamy w hamulec. 
+        # Zbyt niski = od razu blokuje koła. Zbyt wysoki = auto hamuje za słabo.
+        brake_force = over_speed / 30.0
+        
+        # TRAIL BRAKING
+        # Jeśli auto nie jedzie idealnie prosto (S['angle'] jest różne od zera), 
+        # odpuszczamy hamulec proporcjonalnie do wychylenia. 
+        if abs(S['angle']) > 0.5:
+            dampening = 1.0 - min(0.8, abs(S['angle']) * 4.0)
+            brake_force *= dampening
+            
+        return max(0.0, min(1.0, brake_force))
+        
+    # Stabilizacja balansu masy (Ratunek przed poślizgiem)
+    # Jeśli auto wpada w boczny poślizg (speedY jest duże), muśnięcie hamulca 
+    if abs(S['speedY']) > 12.0 and speed > 60.0:
+        return 0.15 # Delikatne muśnięcie dla balansu
         
     return 0.0
-
 
 def calculate_throttle(S, R):
     if S['speedX'] < 15.0:
@@ -482,17 +507,25 @@ def calculate_throttle(S, R):
         
     widocznosc = max(S['track'][7:12])
 
-    dynamic_target_speed = min(400.0, 70.0 + (widocznosc * 1.8))
+    dynamic_target_speed = min(400.0, 70.0 + (widocznosc * 2.3)) - (abs(R['steer']) * 35.0)
     
-    # jesli prosta droga - full gaz
     if abs(S['angle']) < 0.05 and widocznosc > 100.0:
-        return 1.0
+        dynamic_target_speed = 300.0
     
-    if S['speedX'] < dynamic_target_speed - (abs(R['steer']) * 2.5):
-        accel = min(1.0, R['accel'] + 0.8)
-    else:
-        accel = max(0.0, R['accel'] - 0.1)
+    error = dynamic_target_speed - S['speedX']
+    
+    if not hasattr(calculate_throttle, "prev_error"):
+        calculate_throttle.prev_error = error
         
+    d_error = error - calculate_throttle.prev_error
+    
+    calculate_throttle.prev_error = error
+    
+    Kp = 0.03  # Czułość P: Im więcej, tym chętniej wciska gaz przy małych brakach prędkości
+    Kd = 0.10  # Czułość D: Im więcej, tym szybciej zdejmuje nogę z gazu, gdy auto ostro przyspiesza
+    
+    accel = (error * Kp) + (d_error * Kd)
+    
     return max(0.0, min(1.0, accel))
 
 def shift_gears(S):
@@ -502,12 +535,12 @@ def shift_gears(S):
     if current_gear <= 0:
         return 1
         
-    # przeciaganie biegow
-    if rpm > 9500:
+    # Przeciąganie biegów (najlepsza możliwa wartość)
+    if rpm > 19799:
         return min(current_gear + 1, 6)
     
-    # po wyjsciu z zakretu wysokie obroty
-    elif rpm < 4000 and current_gear > 1:
+    # po wyjściu z zakrętu wysokie obroty
+    elif rpm < 8000 and current_gear > 1:
         return max(current_gear - 1, 1)
         
     return current_gear
@@ -515,7 +548,7 @@ def shift_gears(S):
 def traction_control(S, accel):
     if ENABLE_TRACTION_CONTROL:
         if ((S['wheelSpinVel'][2] + S['wheelSpinVel'][3]) - (S['wheelSpinVel'][0] + S['wheelSpinVel'][1])) > 2:
-            accel -= 0.1
+            accel -= 0.08
     return max(0.0, accel)
 
 # ================= MAIN DRIVE FUNCTION =================
