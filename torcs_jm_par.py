@@ -535,12 +535,12 @@ def shift_gears(S):
     if current_gear <= 0:
         return 1
         
-    # przeciaganie biegow
-    if rpm > 14000:
+    # Przeciąganie biegów (najlepsza możliwa wartość)
+    if rpm > 19799:
         return min(current_gear + 1, 6)
     
-    # po wyjsciu z zakretu wysokie obroty
-    elif rpm < 7500 and current_gear > 1:
+    # po wyjściu z zakrętu wysokie obroty
+    elif rpm < 8000 and current_gear > 1:
         return max(current_gear - 1, 1)
         
     return current_gear
@@ -548,7 +548,7 @@ def shift_gears(S):
 def traction_control(S, accel):
     if ENABLE_TRACTION_CONTROL:
         if ((S['wheelSpinVel'][2] + S['wheelSpinVel'][3]) - (S['wheelSpinVel'][0] + S['wheelSpinVel'][1])) > 2:
-            accel -= 0.1
+            accel -= 0.08
     return max(0.0, accel)
 
 # ================= MAIN DRIVE FUNCTION =================
