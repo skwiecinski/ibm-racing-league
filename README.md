@@ -31,7 +31,7 @@ To run this project on your local machine, you will need:
 
 2. **Prepare the TORCS simulator:**
    * Launch the TORCS game.
-   * Navigate to: `Race` -> `Quick Race` -> `Configure Race`.
+   * Navigate to: `Race` -> `Practice Race` -> `Configure Race`.
    * In the drivers section, select only one bot: `scr_server 1`.
    * Choose a track and start the race (`New Race`). The game will pause, waiting for a UDP server connection on port 3001.
 
